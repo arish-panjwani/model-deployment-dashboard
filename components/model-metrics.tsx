@@ -13,10 +13,18 @@ export function ModelMetrics({ model, latestMetrics }: ModelMetricsProps) {
     // Use latest metrics from API if available, otherwise fall back to default stats
     const stats = latestMetrics || (model.defaultStats as any)
     const metricsData = [
-      { name: "R²", value: (stats.r2 || 0) * 100, color: "#8884d8" },
-      { name: "RMSE", value: stats.rmse || 0, color: "#82ca9d" },
-      { name: "MAE", value: stats.mae || 0, color: "#ffc658" },
+      { name: "R² Score", value: Math.max(0, (stats.r2 || 0) * 100), unit: "%" },
+      { name: "RMSE", value: Math.abs(stats.rmse || 0), unit: "" },
+      { name: "MAE", value: Math.abs(stats.mae || 0), unit: "" },
     ]
+
+    // Normalize values for better visualization
+    const maxValue = Math.max(...metricsData.map((d) => d.value))
+    const normalizedData = metricsData.map((item) => ({
+      ...item,
+      normalizedValue: maxValue > 0 ? (item.value / maxValue) * 100 : 0,
+      originalValue: item.value,
+    }))
 
     return (
       <div className="grid md:grid-cols-2 gap-6">
@@ -66,16 +74,47 @@ export function ModelMetrics({ model, latestMetrics }: ModelMetricsProps) {
             <CardDescription>Performance indicators</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metricsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-48 flex flex-col justify-center">
+              {/* Fallback bar chart using CSS */}
+              <div className="space-y-4">
+                {normalizedData.map((item, index) => (
+                  <div key={item.name} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span>{item.name}</span>
+                      <span className="font-mono">
+                        {item.originalValue.toFixed(2)}
+                        {item.unit}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${
+                          index === 0 ? "bg-blue-500" : index === 1 ? "bg-green-500" : "bg-yellow-500"
+                        }`}
+                        style={{ width: `${Math.max(5, item.normalizedValue)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Try to render Recharts as well */}
+              <div className="mt-4" style={{ display: "none" }}>
+                <ResponsiveContainer width="100%" height={150}>
+                  <BarChart data={normalizedData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        const item = normalizedData.find((d) => d.name === name)
+                        return [`${item?.originalValue?.toFixed(4) || 0}${item?.unit || ""}`, name]
+                      }}
+                    />
+                    <Bar dataKey="normalizedValue" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </CardContent>
         </Card>

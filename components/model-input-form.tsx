@@ -65,8 +65,10 @@ export function ModelInputForm({ model, onSubmit, isLoading }: ModelInputFormPro
         return (
           <Input
             type="number"
-            value={formData[input.name] || ""}
-            onChange={(e) => handleInputChange(input.name, Number.parseFloat(e.target.value) || 0)}
+            value={formData[input.name] ?? ""}
+            onChange={(e) =>
+              handleInputChange(input.name, e.target.value === "" ? "" : Number.parseFloat(e.target.value))
+            }
             placeholder={input.placeholder}
             required={input.required}
           />
